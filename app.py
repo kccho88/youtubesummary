@@ -186,59 +186,88 @@ def summarize_with_gpt(full_text):
             messages=[
                 {
                     "role": "system",
-                    "content": """당신은 전문 콘텐츠 분석가입니다. 주어진 동영상 자막을 분석하여 다음을 제공해주세요:
+                    "content": """당신은 전문 콘텐츠 분석가입니다. 주어진 동영상 자막을 분석하여 JSON 형식으로만 응답해주세요.
 
-1. 전체 요약: 동영상의 핵심 내용을 3-5문단으로 요약
-2. 주요 포인트: 핵심 내용을 불릿 포인트로 정리 (5-10개)
-3. 예시 및 사례: 동영상에서 언급된 구체적인 예시, 사례, 사례 연구가 있다면 별도로 추출
-
-다음 JSON 형식으로 응답해주세요:
+반드시 다음 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-    "summary": "전체 요약 내용",
-    "key_points": [
-        "주요 포인트 1",
-        "주요 포인트 2",
-        ...
-    ],
-    "examples": [
-        {
-            "title": "예시 제목",
-            "description": "예시 설명",
-            "timestamp": "언급된 시간대 (있다면)"
-        },
-        ...
-    ]
+    "summary": "동영상의 핵심 내용을 3-5문단으로 요약한 텍스트",
+    "key_points": ["주요 포인트 1", "주요 포인트 2", "주요 포인트 3"],
+    "examples": [{"title": "예시 제목", "description": "예시 설명", "timestamp": "시간대"}]
 }
 
-예시나 사례가 없다면 examples 배열을 비워두세요.
-JSON 형식만 출력하고, 다른 설명은 포함하지 마세요."""
+규칙:
+- 순수 JSON만 출력 (마크다운, HTML, 설명 없음)
+- summary는 문자열
+- key_points는 문자열 배열 (5-10개)
+- examples는 객체 배열 (없으면 빈 배열)
+- 모든 필드 필수"""
                 },
                 {
                     "role": "user",
-                    "content": f"다음 동영상 자막을 분석해주세요:\n\n{full_text}"
+                    "content": f"다음 동영상 자막을 분석해주세요:\n\n{full_text[:3000]}"  # 토큰 제한을 위해 3000자로 제한
                 }
             ],
-            temperature=0.5,
-            max_tokens=2000
+            temperature=0.3,
+            max_tokens=2000,
+            response_format={"type": "json_object"}  # JSON 모드 강제
         )
         
         result = response.choices[0].message.content.strip()
+        print(f"GPT 응답 (처음 200자): {result[:200]}")
+        
+        # JSON 파싱 전 정리
+        # 코드 블록 제거
+        if '```' in result:
+            # ```json ... ``` 형태 제거
+            parts = result.split('```')
+            for part in parts:
+                part = part.strip()
+                if part.startswith('json'):
+                    part = part[4:].strip()
+                if part.startswith('{') and part.endswith('}'):
+                    result = part
+                    break
+        
+        # HTML 태그 제거
+        if result.startswith('<!DOCTYPE') or result.startswith('<html'):
+            print("HTML 응답 감지, 기본 구조 반환")
+            return {
+                'summary': '자막 내용을 요약할 수 없습니다. 다시 시도해주세요.',
+                'key_points': ['요약 생성 실패'],
+                'examples': []
+            }, None
         
         # JSON 파싱
-        # 코드 블록으로 감싸져 있을 수 있으므로 제거
-        if result.startswith('```'):
-            result = result.split('```')[1]
-            if result.startswith('json'):
-                result = result[4:]
-            result = result.strip()
-        
-        summary_data = json.loads(result)
-        return summary_data, None
+        try:
+            summary_data = json.loads(result)
+            
+            # 필수 필드 확인
+            if 'summary' not in summary_data:
+                summary_data['summary'] = '요약을 생성할 수 없습니다.'
+            if 'key_points' not in summary_data:
+                summary_data['key_points'] = []
+            if 'examples' not in summary_data:
+                summary_data['examples'] = []
+            
+            return summary_data, None
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 실패: {str(e)}")
+            print(f"응답 내용: {result[:500]}")
+            # 기본 구조 반환
+            return {
+                'summary': '자막 내용을 분석했지만 형식 변환에 실패했습니다.',
+                'key_points': ['요약 형식 오류'],
+                'examples': []
+            }, None
     
-    except json.JSONDecodeError as e:
-        return None, f"JSON 파싱 오류: {str(e)}"
     except Exception as e:
-        return None, str(e)
+        print(f"요약 생성 오류: {str(e)}")
+        return {
+            'summary': f'요약 생성 중 오류가 발생했습니다: {str(e)}',
+            'key_points': [],
+            'examples': []
+        }, None
 
 
 def save_transcript_to_file(transcript, video_id):
