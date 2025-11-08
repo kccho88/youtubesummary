@@ -35,6 +35,7 @@ instance/
 transcripts/
 history/
 *.txt
+!requirements.txt
 
 # IDE
 .vscode/
