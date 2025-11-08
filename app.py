@@ -445,6 +445,13 @@ if __name__ == '__main__':
     print("유튜브 자막 추출 웹 애플리케이션")
     print("="*80)
     print("\n서버가 시작되었습니다!")
-    print("브라우저에서 http://localhost:8080 으로 접속하세요.\n")
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    
+    # 배포 환경에서는 PORT 환경 변수 사용, 로컬에서는 8080 사용
+    port = int(os.environ.get('PORT', 8080))
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
+    if debug_mode:
+        print(f"브라우저에서 http://localhost:{port} 으로 접속하세요.\n")
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
 
