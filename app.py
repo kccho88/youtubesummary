@@ -55,25 +55,37 @@ def get_transcript(video_id, languages=['ko', 'en']):
     """
     유튜브 비디오의 자막을 추출합니다.
     """
+    # 먼저 프록시 없이 시도
     try:
-        # Webshare 프록시 설정으로 YouTubeTranscriptApi 인스턴스 생성
-        proxy_username = os.getenv('WEBSHARE_PROXY_USERNAME', 'your-username')
-        proxy_password = os.getenv('WEBSHARE_PROXY_PASSWORD', 'your-password')
-        
-        ytt_api = YouTubeTranscriptApi(
-            proxy_config=WebshareProxyConfig(
-                proxy_username=proxy_username,
-                proxy_password=proxy_password,
-            )
-        )
-        
-        # fetch 메서드를 사용하여 자막 가져오기
+        print(f"자막 추출 시도 (프록시 없음): {video_id}")
+        ytt_api = YouTubeTranscriptApi()
         transcript = ytt_api.fetch(video_id, languages=languages)
-        
+        print(f"자막 추출 성공 (프록시 없음): {len(transcript.snippets) if hasattr(transcript, 'snippets') else len(transcript)}개")
         return transcript, None
-    
     except Exception as e:
-        return None, str(e)
+        print(f"프록시 없이 실패: {str(e)}")
+        
+        # 프록시 설정이 있으면 프록시로 재시도
+        proxy_username = os.getenv('WEBSHARE_PROXY_USERNAME')
+        proxy_password = os.getenv('WEBSHARE_PROXY_PASSWORD')
+        
+        if proxy_username and proxy_password and proxy_username != 'your-username':
+            try:
+                print(f"자막 추출 재시도 (프록시 사용): {video_id}")
+                ytt_api = YouTubeTranscriptApi(
+                    proxy_config=WebshareProxyConfig(
+                        proxy_username=proxy_username,
+                        proxy_password=proxy_password,
+                    )
+                )
+                transcript = ytt_api.fetch(video_id, languages=languages)
+                print(f"자막 추출 성공 (프록시 사용): {len(transcript.snippets) if hasattr(transcript, 'snippets') else len(transcript)}개")
+                return transcript, None
+            except Exception as proxy_error:
+                print(f"프록시 사용 실패: {str(proxy_error)}")
+                return None, f"자막을 가져올 수 없습니다. 프록시 없음: {str(e)}, 프록시 사용: {str(proxy_error)}"
+        
+        return None, f"자막을 가져올 수 없습니다: {str(e)}"
 
 
 def format_transcript(transcript):
