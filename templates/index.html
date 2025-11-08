@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 자막 추출기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            flex: 1;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .btn-history {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px 24px;
+            border: 2px solid white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-history:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            font-size: 16px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message, .success-message, .info-message {
+            display: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            border-left: 4px solid #c33;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            border-left: 4px solid #3c3;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .error-message.active, .success-message.active, .info-message.active {
+            display: block;
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .result-header h2 {
+            color: #333;
+            font-size: 1.8em;
+        }
+
+        .result-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .transcript-container {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .transcript-item {
+            display: flex;
+            gap: 15px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .transcript-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .transcript-item.corrected {
+            border-left: 4px solid #4caf50;
+        }
+
+        .timestamp {
+            color: #667eea;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            min-width: 60px;
+        }
+
+        .text {
+            color: #333;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .original-text {
+            color: #999;
+            font-size: 0.9em;
+            text-decoration: line-through;
+            margin-top: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .history-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-video-id {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .history-timestamp {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .history-info {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .main-card {
+                padding: 20px;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">
+                <h1>🎬 유튜브 자막 추출기</h1>
+                <p>유튜브 동영상의 자막을 쉽고 빠르게 추출하세요</p>
+            </div>
+            <button class="btn-history" onclick="showHistory()">📜 히스토리</button>
+        </div>
+
+        <div class="main-card">
+            <div class="input-section">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="videoUrl" 
+                        class="input-field" 
+                        placeholder="유튜브 URL 또는 비디오 ID를 입력하세요"
+                    >
+                    <button class="btn btn-primary" onclick="extractTranscript()">
+                        자막 추출
+                    </button>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="spellCheck" name="spellCheck">
+                    <label for="spellCheck">✨ GPT 맞춤법 검사 사용 (처리 시간이 더 걸립니다)</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="useSummary" name="useSummary">
+                    <label for="useSummary">📝 GPT 요약 및 예시 추출 (내용 요약 + 사례 분석)</label>
+                </div>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+            <div class="info-message" id="infoMessage"></div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">자막을 추출하는 중입니다...</p>
+            </div>
+
+            <div class="result-section" id="resultSection">
+                <div class="result-header">
+                    <div>
+                        <h2>자막 결과</h2>
+                        <p class="result-info">
+                            비디오 ID: <strong id="videoId"></strong> | 
+                            총 <strong id="totalCount"></strong>개 항목
+                        </p>
+                    </div>
+                </div>
+
+                <div class="tab-buttons" id="tabButtons">
+                    <button class="tab-btn active" onclick="switchTab('original')">원본 자막</button>
+                    <button class="tab-btn" id="correctedTab" onclick="switchTab('corrected')" style="display:none;">맞춤법 검사 결과</button>
+                    <button class="tab-btn" id="summaryTab" onclick="switchTab('summary')" style="display:none;">📝 요약 및 예시</button>
+                </div>
+
+                <div class="tab-content active" id="originalTab">
+                    <div class="transcript-container" id="transcriptContainer"></div>
+                </div>
+
+                <div class="tab-content" id="correctedTabContent">
+                    <div class="transcript-container" id="correctedContainer"></div>
+                </div>
+
+                <div class="tab-content" id="summaryTabContent">
+                    <div class="transcript-container" id="summaryContainer"></div>
+                </div>
+
+                <button class="btn btn-download" id="downloadBtn" onclick="downloadTranscript()">
+                    📥 자막 파일 다운로드
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 히스토리 모달 -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📜 추출 히스토리</h2>
+                <button class="close-btn" onclick="closeHistory()">&times;</button>
+            </div>
+            <div id="historyContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilename = '';
+        let currentVideoUrl = '';
+
+        async function extractTranscript() {
+            const url = document.getElementById('videoUrl').value.trim();
+            const useSpellCheck = document.getElementById('spellCheck').checked;
+            const useSummary = document.getElementById('useSummary').checked;
+            
+            if (!url) {
+                showError('URL 또는 비디오 ID를 입력해주세요.');
+                return;
+            }
+
+            currentVideoUrl = url;
+
+            // UI 초기화
+            hideError();
+            hideSuccess();
+            hideInfo();
+            hideResult();
+            
+            let loadingMessage = '자막을 추출하는 중입니다...';
+            if (useSpellCheck && useSummary) {
+                loadingMessage = 'GPT 맞춤법 검사 및 요약을 진행 중입니다... (시간이 걸릴 수 있습니다)';
+            } else if (useSpellCheck) {
+                loadingMessage = 'GPT 맞춤법 검사를 진행 중입니다... (시간이 걸릴 수 있습니다)';
+            } else if (useSummary) {
+                loadingMessage = 'GPT 요약 및 예시 추출을 진행 중입니다... (시간이 걸릴 수 있습니다)';
+            }
+            showLoading(loadingMessage);
+
+            try {
+                const response = await fetch('/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        url: url,
+                        use_spell_check: useSpellCheck,
+                        use_summary: useSummary
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '자막 추출에 실패했습니다.');
+                }
+
+                // 성공
+                hideLoading();
+                
+                let message = `자막을 성공적으로 추출했습니다! (${data.total_count}개 항목)`;
+                if (useSpellCheck && data.corrected_transcript) {
+                    message += ' 맞춤법 검사가 완료되었습니다.';
+                }
+                if (useSummary && data.summary) {
+                    message += ' 요약 및 예시 추출이 완료되었습니다.';
+                }
+                showSuccess(message);
+                
+                displayTranscript(data);
+                currentFilename = data.filename;
+
+            } catch (error) {
+                hideLoading();
+                showError(error.message);
+            }
+        }
+
+        function displayTranscript(data) {
+            document.getElementById('videoId').textContent = data.video_id;
+            document.getElementById('totalCount').textContent = data.total_count;
+
+            // 원본 자막 표시
+            const container = document.getElementById('transcriptContainer');
+            container.innerHTML = '';
+
+            data.transcript.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'transcript-item';
+                div.innerHTML = `
+                    <span class="timestamp">[${item.timestamp}]</span>
+                    <span class="text">${escapeHtml(item.text)}</span>
+                `;
+                container.appendChild(div);
+            });
+
+            // 맞춤법 검사 결과가 있으면 표시
+            if (data.corrected_transcript) {
+                document.getElementById('correctedTab').style.display = 'block';
+                
+                const correctedContainer = document.getElementById('correctedContainer');
+                correctedContainer.innerHTML = '';
+
+                data.corrected_transcript.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'transcript-item' + (item.corrected ? ' corrected' : '');
+                    
+                    let content = `
+                        <span class="timestamp">[${item.timestamp}]</span>
+                        <div class="text">
+                            ${escapeHtml(item.text)}
+                    `;
+                    
+                    if (item.corrected && item.original) {
+                        content += `<div class="original-text">원본: ${escapeHtml(item.original)}</div>`;
+                    }
+                    
+                    content += `</div>`;
+                    div.innerHTML = content;
+                    correctedContainer.appendChild(div);
+                });
+            } else {
+                document.getElementById('correctedTab').style.display = 'none';
+            }
+
+            // 요약 및 예시가 있으면 표시
+            if (data.summary) {
+                document.getElementById('summaryTab').style.display = 'block';
+                
+                const summaryContainer = document.getElementById('summaryContainer');
+                summaryContainer.innerHTML = '';
+
+                // 요약 섹션
+                const summarySection = document.createElement('div');
+                summarySection.style.marginBottom = '30px';
+                summarySection.innerHTML = `
+                    <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.5em;">📋 전체 요약</h3>
+                    <div style="background: white; padding: 20px; border-radius: 10px; line-height: 1.8; color: #333;">
+                        ${escapeHtml(data.summary.summary).replace(/\n/g, '<br>')}
+                    </div>
+                `;
+                summaryContainer.appendChild(summarySection);
+
+                // 주요 포인트 섹션
+                if (data.summary.key_points && data.summary.key_points.length > 0) {
+                    const keyPointsSection = document.createElement('div');
+                    keyPointsSection.style.marginBottom = '30px';
+                    
+                    let keyPointsHTML = `
+                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.5em;">🎯 주요 포인트</h3>
+                        <div style="background: white; padding: 20px; border-radius: 10px;">
+                    `;
+                    
+                    data.summary.key_points.forEach((point, index) => {
+                        keyPointsHTML += `
+                            <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: start;">
+                                <span style="color: #667eea; font-weight: bold; min-width: 30px;">${index + 1}.</span>
+                                <span style="color: #333; line-height: 1.6;">${escapeHtml(point)}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    keyPointsHTML += `</div>`;
+                    keyPointsSection.innerHTML = keyPointsHTML;
+                    summaryContainer.appendChild(keyPointsSection);
+                }
+
+                // 예시 및 사례 섹션
+                if (data.summary.examples && data.summary.examples.length > 0) {
+                    const examplesSection = document.createElement('div');
+                    examplesSection.style.marginBottom = '30px';
+                    
+                    let examplesHTML = `
+                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.5em;">💡 예시 및 사례</h3>
+                    `;
+                    
+                    data.summary.examples.forEach((example, index) => {
+                        examplesHTML += `
+                            <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #4caf50;">
+                                <h4 style="color: #4caf50; margin-bottom: 10px; font-size: 1.2em;">
+                                    예시 ${index + 1}: ${escapeHtml(example.title || '제목 없음')}
+                                </h4>
+                                <p style="color: #333; line-height: 1.6; margin-bottom: 8px;">
+                                    ${escapeHtml(example.description || '설명 없음')}
+                                </p>
+                                ${example.timestamp ? `<p style="color: #999; font-size: 0.9em;">📍 언급 시간: ${escapeHtml(example.timestamp)}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    examplesSection.innerHTML = examplesHTML;
+                    summaryContainer.appendChild(examplesSection);
+                } else {
+                    const noExamplesDiv = document.createElement('div');
+                    noExamplesDiv.innerHTML = `
+                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.5em;">💡 예시 및 사례</h3>
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; color: #999;">
+                            이 동영상에서는 구체적인 예시나 사례가 언급되지 않았습니다.
+                        </div>
+                    `;
+                    summaryContainer.appendChild(noExamplesDiv);
+                }
+            } else {
+                document.getElementById('summaryTab').style.display = 'none';
+            }
+
+            showResult();
+        }
+
+        function switchTab(tab) {
+            // 탭 버튼 활성화
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 탭 컨텐츠 표시
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            if (tab === 'original') {
+                document.getElementById('originalTab').classList.add('active');
+            } else if (tab === 'corrected') {
+                document.getElementById('correctedTabContent').classList.add('active');
+            } else if (tab === 'summary') {
+                document.getElementById('summaryTabContent').classList.add('active');
+            }
+        }
+
+        async function showHistory() {
+            try {
+                const response = await fetch('/history');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '히스토리를 불러오는데 실패했습니다.');
+                }
+
+                const container = document.getElementById('historyContainer');
+                container.innerHTML = '';
+
+                if (data.history.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">히스토리가 없습니다.</p>';
+                } else {
+                    data.history.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'history-item';
+                        div.onclick = () => loadFromHistory(item.video_url);
+                        div.innerHTML = `
+                            <div class="history-item-header">
+                                <span class="history-video-id">📹 ${item.video_id}</span>
+                                <span class="history-timestamp">${item.timestamp}</span>
+                            </div>
+                            <div class="history-info">
+                                자막 ${item.transcript_count}개 항목
+                                ${item.has_correction ? ' | ✨ 맞춤법 검사 완료' : ''}
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+
+                document.getElementById('historyModal').classList.add('active');
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function closeHistory() {
+            document.getElementById('historyModal').classList.remove('active');
+        }
+
+        function loadFromHistory(videoUrl) {
+            document.getElementById('videoUrl').value = videoUrl;
+            closeHistory();
+            showInfo('히스토리에서 불러왔습니다. "자막 추출" 버튼을 클릭하세요.');
+        }
+
+        function downloadTranscript() {
+            if (currentFilename) {
+                window.location.href = `/download/${currentFilename}`;
+            }
+        }
+
+        function showLoading(text = '자막을 추출하는 중입니다...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('active');
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('active');
+        }
+
+        function hideSuccess() {
+            document.getElementById('successMessage').classList.remove('active');
+        }
+
+        function showInfo(message) {
+            const infoDiv = document.getElementById('infoMessage');
+            infoDiv.textContent = message;
+            infoDiv.classList.add('active');
+        }
+
+        function hideInfo() {
+            document.getElementById('infoMessage').classList.remove('active');
+        }
+
+        function showResult() {
+            document.getElementById('resultSection').classList.add('active');
+        }
+
+        function hideResult() {
+            document.getElementById('resultSection').classList.remove('active');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Enter 키로 검색
+        document.getElementById('videoUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                extractTranscript();
+            }
+        });
+
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('historyModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeHistory();
+            }
+        });
+    </script>
+</body>
+</html>
