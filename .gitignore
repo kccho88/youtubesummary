@@ -36,6 +36,7 @@ transcripts/
 history/
 *.txt
 !requirements.txt
+!runtime.txt
 
 # IDE
 .vscode/
